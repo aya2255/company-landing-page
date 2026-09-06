@@ -1,6 +1,8 @@
-# NexaTech — Company Landing Page
+# [NexaTech — Company Landing Page](company-landing-page-ere0mgj5u-react-1ca0.vercel.app)
 
 A modern and responsive company landing page built with React and Vite.
+
+Live Demo : [View Website](company-landing-page-ere0mgj5u-react-1ca0.vercel.app)
 
 ## ✨ Features
 
