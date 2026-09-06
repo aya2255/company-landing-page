@@ -47,7 +47,7 @@ src/
 Clone the repository and install the dependencies:
 
 ```bash
-git clone YOUR_REPOSITORY_URL
+git clone https://github.com/aya2255/company-landing-page.git
 cd company-landing-page
 npm install
 npm run dev
