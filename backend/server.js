@@ -1,6 +1,8 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
-const Database = require("better-sqlite3");
+const {createClient} = require("@libsql/client");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -10,17 +12,24 @@ app.use(cors());
 app.use(express.json());
 
 // Database
-const db = new Database("contact.db");
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS inquiries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    subject TEXT NOT NULL,
-    message TEXT NOT NULL
-  )
-`).run();
+async function createTable() {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL
+    )
+  `);
+}
+
+createTable();
 
 // Test route
 app.get("/", (req, res) => {
@@ -28,7 +37,7 @@ app.get("/", (req, res) => {
 });
 
 // Contact API
-app.post("/api/contact", (req, res) => {
+app.post("/api/contact", async (req, res) => {
   const { name, email, subject, message } = req.body;
 
   // Validation
@@ -48,16 +57,17 @@ app.post("/api/contact", (req, res) => {
   }
 
   // Store inquiry
-  const insert = db.prepare(`
+await db.execute({
+  sql: `
     INSERT INTO inquiries (name, email, subject, message)
     VALUES (?, ?, ?, ?)
-  `);
+  `,
+  args: [name, email, subject, message],
+});
 
-  insert.run(name, email, subject, message);
-
-  res.status(201).json({
-    message: "Your message has been sent successfully!"
-  });
+res.status(201).json({
+  message: "Your message has been sent successfully!",
+});
 });
 
 app.listen(PORT, () => {
