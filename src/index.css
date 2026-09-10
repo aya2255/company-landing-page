@@ -861,3 +861,22 @@ a{
     gap: 20px;
   }
 }
+
+.success-message {
+  margin-top: 15px;
+  color: #16a34a;
+  font-size: 14px;
+  text-align: center;
+}
+
+.error-message {
+  margin-top: 15px;
+  color: #dc2626;
+  font-size: 14px;
+  text-align: center;
+}
+
+.form-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
