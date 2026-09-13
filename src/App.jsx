@@ -6,6 +6,7 @@ import WhyUs from './components/WhyUs';
 import Sats from './components/Sats';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
+import ContentManagement from './components/ContentManagement';
 function App() {
   return (
     <div>
@@ -16,7 +17,9 @@ function App() {
       <WhyUs />
       <Sats />
       <Contact />
+      <ContentManagement />
       <Footer />
+      
     </div>
   );
 }

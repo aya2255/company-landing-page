@@ -27,6 +27,14 @@ async function createTable() {
       message TEXT NOT NULL
     )
   `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS content (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL
+    )
+  `);
 }
 
 createTable();
@@ -34,6 +42,126 @@ createTable();
 // Test route
 app.get("/", (req, res) => {
   res.json({ message: "Backend is running!" });
+});
+
+// Content API - Get all content
+app.get("/api/content", async (req, res) => {
+  try {
+    const result = await db.execute(`
+      SELECT * FROM content
+      ORDER BY id DESC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to fetch content.",
+    });
+  }
+});
+
+// Content API - Add new content
+app.post("/api/content", async (req, res) => {
+  const { title, description } = req.body;
+
+  if (!title || !description) {
+    return res.status(400).json({
+      error: "Title and description are required.",
+    });
+  }
+
+  try {
+    const result = await db.execute({
+      sql: `
+        INSERT INTO content (title, description)
+        VALUES (?, ?)
+      `,
+      args: [title, description],
+    });
+
+    res.status(201).json({
+      message: "Content added successfully!",
+      id: Number(result.lastInsertRowid),
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to add content.",
+    });
+  }
+});
+
+// Content API - Update content
+app.put("/api/content/:id", async (req, res) => {
+  const { id } = req.params;
+  const { title, description } = req.body;
+
+  if (!title || !description) {
+    return res.status(400).json({
+      error: "Title and description are required.",
+    });
+  }
+
+  try {
+    const result = await db.execute({
+      sql: `
+        UPDATE content
+        SET title = ?, description = ?
+        WHERE id = ?
+      `,
+      args: [title, description, id],
+    });
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        error: "Content not found.",
+      });
+    }
+
+    res.json({
+      message: "Content updated successfully!",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to update content.",
+    });
+  }
+});
+
+// Content API - Delete content
+app.delete("/api/content/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await db.execute({
+      sql: `
+        DELETE FROM content
+        WHERE id = ?
+      `,
+      args: [id],
+    });
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        error: "Content not found.",
+      });
+    }
+
+    res.json({
+      message: "Content deleted successfully!",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to delete content.",
+    });
+  }
 });
 
 // Contact API
