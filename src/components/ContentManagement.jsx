@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 function ContentManagement() {
+  const token = localStorage.getItem("token");
   const [content, setContent] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -9,7 +10,11 @@ function ContentManagement() {
 
   const fetchContent = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/content");
+      const response = await fetch("http://localhost:5000/api/content", {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
       const data = await response.json();
       setContent(data);
     } catch (error) {
@@ -40,6 +45,7 @@ function ContentManagement() {
         method,
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           title,
@@ -83,6 +89,9 @@ function ContentManagement() {
         `http://localhost:5000/api/content/${id}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 

@@ -1,3 +1,5 @@
+import './App.css';
+import {useState} from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import About from './components/About';
@@ -7,7 +9,23 @@ import Sats from './components/Sats';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
 import ContentManagement from './components/ContentManagement';
+import Auth from './components/Auth';
+
+
 function App() {
+  const [user, setUser] = useState(
+  JSON.parse(localStorage.getItem("user")) || null
+);
+
+const handleLogin = (userData) => {
+  setUser(userData);
+};
+
+const handleLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  setUser(null);
+};
   return (
     <div>
       <Navbar />
@@ -17,8 +35,18 @@ function App() {
       <WhyUs />
       <Sats />
       <Contact />
-      <ContentManagement />
-      <Footer />
+
+<Auth onLogin={handleLogin} />
+
+{user && <ContentManagement />}
+
+{user && (
+  <button className="logout-button" onClick={handleLogout}>
+    Logout
+  </button>
+)}
+
+<Footer />
       
     </div>
   );
