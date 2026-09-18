@@ -10,7 +10,7 @@ import Contact from './components/Contact';
 import Footer from './components/Footer';
 import ContentManagement from './components/ContentManagement';
 import Auth from './components/Auth';
-
+import CustomerDashboard from './components/CustomerDashboard';
 
 function App() {
   const [user, setUser] = useState(
@@ -37,6 +37,8 @@ const handleLogout = () => {
       <Contact />
 
 <Auth onLogin={handleLogin} />
+
+{user && <CustomerDashboard />}
 
 {user && <ContentManagement />}
 

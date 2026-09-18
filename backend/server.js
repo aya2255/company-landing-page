@@ -13,6 +13,82 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+app.get("/api/user/profile", authenticateToken, async (req, res) => {
+  try {
+    const result = await db.execute({
+      sql: `
+        SELECT id, name, email
+        FROM users
+        WHERE id = ?
+      `,
+      args: [req.user.id],
+    });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "User not found.",
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to fetch user profile.",
+    });
+  }
+});
+
+app.put("/api/user/profile", authenticateToken, async (req, res) => {
+  const { name } = req.body;
+
+  // Backend validation
+  if (!name || !name.trim()) {
+    return res.status(400).json({
+      error: "Name is required.",
+    });
+  }
+
+  try {
+    const result = await db.execute({
+      sql: `
+        UPDATE users
+        SET name = ?
+        WHERE id = ?
+      `,
+      args: [name.trim(), req.user.id],
+    });
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        error: "User not found.",
+      });
+    }
+
+    // Return updated user data
+    const updatedUser = await db.execute({
+      sql: `
+        SELECT id, name, email
+        FROM users
+        WHERE id = ?
+      `,
+      args: [req.user.id],
+    });
+
+    res.json({
+      message: "Profile updated successfully!",
+      user: updatedUser.rows[0],
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to update profile.",
+    });
+  }
+});
+
 // Database
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL,
