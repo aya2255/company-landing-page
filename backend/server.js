@@ -122,6 +122,14 @@ async function createTable() {
     password TEXT NOT NULL
   )
 `);
+
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS services (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL
+  )
+`);
 }
 
 createTable();
@@ -435,6 +443,125 @@ await db.execute({
 res.status(201).json({
   message: "Your message has been sent successfully!",
 });
+});
+
+app.get("/api/services", async (req, res) => {
+  try {
+    const result = await db.execute(`
+      SELECT id, title, description
+      FROM services
+      ORDER BY id DESC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to fetch services.",
+    });
+  }
+});
+
+app.post("/api/services", authenticateToken, async (req, res) => {
+  const { title, description } = req.body;
+
+  // Backend validation
+  if (!title || !title.trim() || !description || !description.trim()) {
+    return res.status(400).json({
+      error: "Title and description are required.",
+    });
+  }
+
+  try {
+    const result = await db.execute({
+      sql: `
+        INSERT INTO services (title, description)
+        VALUES (?, ?)
+      `,
+      args: [title.trim(), description.trim()],
+    });
+
+    res.status(201).json({
+      message: "Service created successfully!",
+      service: {
+        id: Number(result.lastInsertRowid),
+        title: title.trim(),
+        description: description.trim(),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to create service.",
+    });
+  }
+});
+
+app.put("/api/services/:id", authenticateToken, async (req, res) => {
+  const { title, description } = req.body;
+  const { id } = req.params;
+
+  if (!title || !title.trim() || !description || !description.trim()) {
+    return res.status(400).json({
+      error: "Title and description are required.",
+    });
+  }
+
+  try {
+    const result = await db.execute({
+      sql: `
+        UPDATE services
+        SET title = ?, description = ?
+        WHERE id = ?
+      `,
+      args: [title.trim(), description.trim(), id],
+    });
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        error: "Service not found.",
+      });
+    }
+
+    res.json({
+      message: "Service updated successfully!",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to update service.",
+    });
+  }
+});
+
+app.delete("/api/services/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await db.execute({
+      sql: "DELETE FROM services WHERE id = ?",
+      args: [id],
+    });
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        error: "Service not found.",
+      });
+    }
+
+    res.json({
+      message: "Service deleted successfully!",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to delete service.",
+    });
+  }
 });
 
 app.listen(PORT, () => {

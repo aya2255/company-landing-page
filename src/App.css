@@ -389,3 +389,186 @@
     width: 100%;
   }
 }
+
+/* Service Management */
+
+.service-management-section {
+  padding: 80px 20px;
+  background: #f8f8fc;
+}
+
+.service-management-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.service-management-container .section-subtitle {
+  color: #4f46e5;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.service-management-container h2 {
+  font-size: 36px;
+  margin-bottom: 30px;
+}
+
+.service-management-form {
+  background: white;
+  padding: 35px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.service-management-form input,
+.service-management-form textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 15px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.service-management-form input:focus,
+.service-management-form textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.service-form-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 5px;
+}
+
+.service-form-buttons .form-button {
+  padding: 12px 25px;
+}
+
+.cancel-button {
+  padding: 12px 25px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #555;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancel-button:hover {
+  background: #f3f3f3;
+}
+
+.services-list {
+  margin-top: 40px;
+}
+
+.services-list h3 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.service-item {
+  background: white;
+  padding: 25px;
+  margin-bottom: 15px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.service-item h4 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.service-item p {
+  margin: 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+.service-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.edit-button,
+.delete-button {
+  padding: 9px 18px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.edit-button {
+  border: 1px solid #4f46e5;
+  background: white;
+  color: #4f46e5;
+}
+
+.edit-button:hover {
+  background: #4f46e5;
+  color: white;
+}
+
+.delete-button {
+  border: 1px solid #dc2626;
+  background: white;
+  color: #dc2626;
+}
+
+.delete-button:hover {
+  background: #dc2626;
+  color: white;
+}
+
+@media (max-width: 600px) {
+  .service-management-section {
+    padding: 60px 20px;
+  }
+
+  .service-management-container h2 {
+    font-size: 28px;
+  }
+
+  .service-management-form {
+    padding: 25px 20px;
+  }
+
+  .service-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .service-actions {
+    width: 100%;
+  }
+
+  .edit-button,
+  .delete-button {
+    flex: 1;
+  }
+
+  .service-form-buttons {
+    flex-direction: column;
+  }
+
+  .service-form-buttons button {
+    width: 100%;
+  }
+}

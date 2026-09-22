@@ -11,6 +11,7 @@ import Footer from './components/Footer';
 import ContentManagement from './components/ContentManagement';
 import Auth from './components/Auth';
 import CustomerDashboard from './components/CustomerDashboard';
+import ServiceManagement from './components/ServiceManagement';
 
 function App() {
   const [user, setUser] = useState(
@@ -39,6 +40,8 @@ const handleLogout = () => {
 <Auth onLogin={handleLogin} />
 
 {user && <CustomerDashboard />}
+
+{user && <ServiceManagement />}
 
 {user && <ContentManagement />}
 
