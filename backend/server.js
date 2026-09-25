@@ -114,20 +114,41 @@ async function createTable() {
     )
   `);
 
-  await db.execute(`
+await db.execute(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL
+    password TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'customer'
   )
 `);
+
+try {
+  await db.execute(`
+    ALTER TABLE users
+    ADD COLUMN role TEXT NOT NULL DEFAULT 'customer'
+  `);
+} catch (error) {
+  // Column already exists
+}
 
 await db.execute(`
   CREATE TABLE IF NOT EXISTS services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     description TEXT NOT NULL
+  )
+`);
+
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    service_id INTEGER NOT NULL,
+    details TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
 }
@@ -256,12 +277,13 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     // Create JWT
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      },
+const token = jwt.sign(
+  {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  },
       process.env.JWT_SECRET,
       {
         expiresIn: "1h",
@@ -271,11 +293,12 @@ app.post("/api/auth/login", async (req, res) => {
     res.json({
       message: "Login successful!",
       token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
+user: {
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+},
     });
   } catch (error) {
     console.error(error);
@@ -560,6 +583,163 @@ app.delete("/api/services/:id", authenticateToken, async (req, res) => {
 
     res.status(500).json({
       error: "Failed to delete service.",
+    });
+  }
+});
+
+app.post("/api/requests", authenticateToken, async (req, res) => {
+  const { service_id, details } = req.body;
+
+  if (!service_id || !details || !details.trim()) {
+    return res.status(400).json({
+      error: "Service and details are required.",
+    });
+  }
+
+  try {
+    const service = await db.execute({
+      sql: "SELECT id FROM services WHERE id = ?",
+      args: [service_id],
+    });
+
+    if (service.rows.length === 0) {
+      return res.status(404).json({
+        error: "Service not found.",
+      });
+    }
+
+    const result = await db.execute({
+      sql: `
+        INSERT INTO requests (user_id, service_id, details)
+        VALUES (?, ?, ?)
+      `,
+      args: [req.user.id, service_id, details.trim()],
+    });
+
+    res.status(201).json({
+      message: "Request submitted successfully!",
+      request: {
+        id: Number(result.lastInsertRowid),
+        service_id,
+        details: details.trim(),
+        status: "Pending",
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to submit request.",
+    });
+  }
+});
+
+app.get("/api/requests", authenticateToken, async (req, res) => {
+  try {
+    const result = await db.execute(`
+      SELECT
+        requests.id,
+        requests.details,
+        requests.status,
+        requests.created_at,
+        users.name AS customer_name,
+        users.email AS customer_email,
+        services.title AS service_title
+      FROM requests
+      JOIN users ON requests.user_id = users.id
+      JOIN services ON requests.service_id = services.id
+      ORDER BY requests.id DESC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to fetch requests.",
+    });
+  }
+});
+
+app.get("/api/requests/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await db.execute({
+      sql: `
+        SELECT
+          requests.id,
+          requests.details,
+          requests.status,
+          requests.created_at,
+          users.name AS customer_name,
+          users.email AS customer_email,
+          services.title AS service_title
+        FROM requests
+        JOIN users ON requests.user_id = users.id
+        JOIN services ON requests.service_id = services.id
+        WHERE requests.id = ?
+      `,
+      args: [id],
+    });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "Request not found.",
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to fetch request.",
+    });
+  }
+});
+
+app.put("/api/requests/:id/status", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const allowedStatuses = [
+    "Pending",
+    "In Progress",
+    "Completed",
+    "Rejected",
+  ];
+
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({
+      error: "Invalid status.",
+    });
+  }
+
+  try {
+    const result = await db.execute({
+      sql: `
+        UPDATE requests
+        SET status = ?
+        WHERE id = ?
+      `,
+      args: [status, id],
+    });
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({
+        error: "Request not found.",
+      });
+    }
+
+    res.json({
+      message: "Request status updated successfully!",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to update request status.",
     });
   }
 });

@@ -12,6 +12,8 @@ import ContentManagement from './components/ContentManagement';
 import Auth from './components/Auth';
 import CustomerDashboard from './components/CustomerDashboard';
 import ServiceManagement from './components/ServiceManagement';
+import CustomerRequest from './components/CustomerRequest';
+import RequestManagement from './components/RequestManagement';
 
 function App() {
   const [user, setUser] = useState(
@@ -41,9 +43,17 @@ const handleLogout = () => {
 
 {user && <CustomerDashboard />}
 
-{user && <ServiceManagement />}
+{user && user.role === "customer" && (
+  <CustomerRequest />
+)}
 
-{user && <ContentManagement />}
+{user && user.role === "admin" && (
+  <>
+    <ServiceManagement />
+    <ContentManagement />
+    <RequestManagement />
+  </>
+)}
 
 {user && (
   <button className="logout-button" onClick={handleLogout}>

@@ -1,24 +1,41 @@
 import { useEffect, useState } from "react";
 
 function ContentManagement() {
-  const token = localStorage.getItem("token");
   const [content, setContent] = useState([]);
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+
   const [editingId, setEditingId] = useState(null);
+
   const [status, setStatus] = useState("");
 
   const fetchContent = async () => {
+    const token = localStorage.getItem("token");
+
     try {
-      const response = await fetch("http://localhost:5000/api/content", {
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
-});
+      const response = await fetch(
+        "http://localhost:5000/api/content",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
       const data = await response.json();
-      setContent(data);
+
+      if (!response.ok) {
+        throw new Error(data.error);
+      }
+
+      // Make sure content is always an array
+      setContent(Array.isArray(data) ? data : []);
     } catch (error) {
-      setStatus("Failed to load content.");
+      console.error(error);
+
+      setContent([]);
+      setStatus(error.message || "Failed to load content.");
     }
   };
 
@@ -29,10 +46,14 @@ function ContentManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!title || !description) {
+    setStatus("");
+
+    if (!title.trim() || !description.trim()) {
       setStatus("Please fill in all fields.");
       return;
     }
+
+    const token = localStorage.getItem("token");
 
     try {
       const url = editingId
@@ -48,8 +69,8 @@ function ContentManagement() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          title,
-          description,
+          title: title.trim(),
+          description: description.trim(),
         }),
       });
 
@@ -60,12 +81,15 @@ function ContentManagement() {
       }
 
       setStatus(data.message);
+
       setTitle("");
       setDescription("");
       setEditingId(null);
 
       fetchContent();
     } catch (error) {
+      console.error(error);
+
       setStatus(error.message || "Something went wrong.");
     }
   };
@@ -83,6 +107,8 @@ function ContentManagement() {
     );
 
     if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
 
     try {
       const response = await fetch(
@@ -102,10 +128,20 @@ function ContentManagement() {
       }
 
       setStatus(data.message);
+
       fetchContent();
     } catch (error) {
+      console.error(error);
+
       setStatus(error.message || "Something went wrong.");
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setTitle("");
+    setDescription("");
+    setStatus("");
   };
 
   return (
@@ -115,7 +151,10 @@ function ContentManagement() {
 
         <h2>Content Management</h2>
 
-        <form onSubmit={handleSubmit} className="content-form">
+        <form
+          onSubmit={handleSubmit}
+          className="content-form"
+        >
           <input
             type="text"
             placeholder="Content title"
@@ -130,7 +169,10 @@ function ContentManagement() {
             onChange={(e) => setDescription(e.target.value)}
           />
 
-          <button type="submit" className="form-button">
+          <button
+            type="submit"
+            className="form-button"
+          >
             {editingId ? "Update Content" : "Add Content"}
           </button>
 
@@ -138,34 +180,48 @@ function ContentManagement() {
             <button
               type="button"
               className="cancel-button"
-              onClick={() => {
-                setEditingId(null);
-                setTitle("");
-                setDescription("");
-              }}
+              onClick={handleCancelEdit}
             >
               Cancel
             </button>
           )}
         </form>
 
-        {status && <p className="content-status">{status}</p>}
+        {status && (
+          <p className="content-status">
+            {status}
+          </p>
+        )}
 
         <div className="content-list">
+          <h3>All Content</h3>
+
           {content.length === 0 ? (
             <p>No content available.</p>
           ) : (
             content.map((item) => (
-              <div className="content-item" key={item.id}>
+              <div
+                className="content-item"
+                key={item.id}
+              >
                 <div>
                   <h3>{item.title}</h3>
+
                   <p>{item.description}</p>
                 </div>
 
                 <div className="content-actions">
-                  <button onClick={() => handleEdit(item)}>Edit</button>
+                  <button
+                    onClick={() => handleEdit(item)}
+                  >
+                    Edit
+                  </button>
 
-                  <button onClick={() => handleDelete(item.id)}>
+                  <button
+                    onClick={() =>
+                      handleDelete(item.id)
+                    }
+                  >
                     Delete
                   </button>
                 </div>
