@@ -635,8 +635,10 @@ app.post("/api/requests", authenticateToken, async (req, res) => {
 });
 
 app.get("/api/requests", authenticateToken, async (req, res) => {
+  const { search, status, service_id } = req.query;
+
   try {
-    const result = await db.execute(`
+    let sql = `
       SELECT
         requests.id,
         requests.details,
@@ -648,8 +650,50 @@ app.get("/api/requests", authenticateToken, async (req, res) => {
       FROM requests
       JOIN users ON requests.user_id = users.id
       JOIN services ON requests.service_id = services.id
-      ORDER BY requests.id DESC
-    `);
+      WHERE 1 = 1
+    `;
+
+    const args = [];
+
+    // Search
+    if (search && search.trim()) {
+      sql += `
+        AND (
+          users.name LIKE ?
+          OR users.email LIKE ?
+          OR services.title LIKE ?
+          OR requests.details LIKE ?
+        )
+      `;
+
+      const searchValue = `%${search.trim()}%`;
+
+      args.push(
+        searchValue,
+        searchValue,
+        searchValue,
+        searchValue
+      );
+    }
+
+    // Filter by status
+    if (status && status !== "All") {
+      sql += ` AND requests.status = ?`;
+      args.push(status);
+    }
+
+    // Filter by service
+    if (service_id && service_id !== "All") {
+      sql += ` AND requests.service_id = ?`;
+      args.push(service_id);
+    }
+
+    sql += ` ORDER BY requests.id DESC`;
+
+    const result = await db.execute({
+      sql,
+      args,
+    });
 
     res.json(result.rows);
   } catch (error) {

@@ -682,3 +682,262 @@
     width: 100%;
   }
 }
+
+/* ============================= */
+/* Request Management - Filters */
+/* ============================= */
+
+.request-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 14px;
+  align-items: center;
+  margin: 30px 0;
+  padding: 22px;
+  background: #f8f6f3;
+  border: 1px solid #e7e1db;
+  border-radius: 16px;
+}
+
+/* Search input */
+
+.request-search {
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid #d8d1ca;
+  border-radius: 10px;
+  background: white;
+  color: #333;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s ease;
+  box-sizing: border-box;
+}
+
+.request-search::placeholder {
+  color: #999;
+}
+
+.request-search:focus {
+  border-color: #7b2d3b;
+  box-shadow: 0 0 0 3px rgba(123, 45, 59, 0.08);
+}
+
+
+/* Select filters */
+
+.request-filter-select {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d8d1ca;
+  border-radius: 10px;
+  background: white;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  transition: 0.2s ease;
+}
+
+.request-filter-select:focus {
+  border-color: #7b2d3b;
+  box-shadow: 0 0 0 3px rgba(123, 45, 59, 0.08);
+}
+
+
+/* Buttons */
+
+.request-filter-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.request-filter-buttons .form-button,
+.request-filter-buttons .reset-button {
+  min-width: 90px;
+  padding: 13px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+
+/* Search button */
+
+.request-filter-buttons .form-button {
+  border: none;
+}
+
+.request-filter-buttons .form-button:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+
+
+/* Reset button */
+
+.reset-button {
+  background: white;
+  color: #555;
+  border: 1px solid #d8d1ca;
+}
+
+.reset-button:hover {
+  background: #f1eeeb;
+  border-color: #bbb2aa;
+}
+
+
+/* ============================= */
+/* Requests List */
+/* ============================= */
+
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 25px;
+}
+
+
+/* Request Card */
+
+.request-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 24px;
+  background: white;
+  border: 1px solid #e5dfd9;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  transition: 0.2s ease;
+}
+
+.request-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 20px rgba(0, 0, 0, 0.07);
+}
+
+
+/* Request Information */
+
+.request-info {
+  flex: 1;
+}
+
+.request-info h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #7b2d3b;
+  font-size: 20px;
+}
+
+.request-info p {
+  margin: 8px 0;
+  color: #555;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.request-info strong {
+  color: #333;
+}
+
+
+/* Status section */
+
+.request-status {
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.request-status label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+}
+
+.request-status select {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #d8d1ca;
+  border-radius: 9px;
+  background: #fafafa;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+}
+
+.request-status select:focus {
+  border-color: #7b2d3b;
+}
+
+
+/* Empty state */
+
+.requests-list > p {
+  padding: 30px;
+  text-align: center;
+  background: #f8f6f3;
+  border: 1px dashed #d8d1ca;
+  border-radius: 14px;
+  color: #777;
+}
+
+
+/* ============================= */
+/* Responsive */
+/* ============================= */
+
+@media (max-width: 1000px) {
+  .request-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .request-search {
+    grid-column: 1 / -1;
+  }
+
+  .request-filter-buttons {
+    grid-column: 1 / -1;
+  }
+}
+
+
+@media (max-width: 700px) {
+  .request-filters {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .request-search {
+    grid-column: auto;
+  }
+
+  .request-filter-buttons {
+    grid-column: auto;
+    width: 100%;
+  }
+
+  .request-filter-buttons button {
+    flex: 1;
+  }
+
+  .request-card {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .request-status {
+    min-width: 100%;
+  }
+}
