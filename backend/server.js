@@ -178,6 +178,57 @@ function authenticateToken(req, res, next) {
   });
 }
 
+function authorize(...requiredPermissions) {
+  return (req, res, next) => {
+    const role = req.user.role;
+
+    const permissions = {
+      admin: [
+        "content:read",
+        "content:create",
+        "content:update",
+        "content:delete",
+
+        "service:read",
+        "service:create",
+        "service:update",
+        "service:delete",
+
+        "request:read",
+        "request:create",
+        "request:update",
+      ],
+
+      employee: [
+        "service:read",
+
+        "request:read",
+        "request:update",
+      ],
+
+      customer: [
+        "service:read",
+        "request:create",
+      ],
+    };
+
+    const userPermissions = permissions[role] || [];
+
+    const hasPermission = requiredPermissions.every(
+      (permission) =>
+        userPermissions.includes(permission)
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        error: "You do not have permission to perform this action.",
+      });
+    }
+
+    next();
+  };
+}
+
 app.post("/api/auth/register", async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -315,7 +366,11 @@ app.get("/", (req, res) => {
 });
 
 // Content API - Get all content
-app.get("/api/content", authenticateToken ,async (req, res) => {
+app.get(
+  "/api/content",
+  authenticateToken,
+  authorize("content:read"),
+  async (req, res) => {
   try {
     const result = await db.execute(`
       SELECT * FROM content
@@ -333,7 +388,11 @@ app.get("/api/content", authenticateToken ,async (req, res) => {
 });
 
 // Content API - Add new content
-app.post("/api/content", authenticateToken, async (req, res) => {
+app.post(
+  "/api/content",
+  authenticateToken,
+  authorize("content:create"),
+  async (req, res) => {
   const { title, description } = req.body;
 
   if (!title || !description) {
@@ -365,7 +424,11 @@ app.post("/api/content", authenticateToken, async (req, res) => {
 });
 
 // Content API - Update content
-app.put("/api/content/:id", authenticateToken , async (req, res) => {
+ app.put(
+  "/api/content/:id",
+  authenticateToken,
+  authorize("content:update"),
+  async (req, res) => {
   const { id } = req.params;
   const { title, description } = req.body;
 
@@ -404,7 +467,11 @@ app.put("/api/content/:id", authenticateToken , async (req, res) => {
 });
 
 // Content API - Delete content
-app.delete("/api/content/:id", authenticateToken , async (req, res) => {
+app.delete(
+  "/api/content/:id",
+  authenticateToken,
+  authorize("content:delete"),
+  async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -486,7 +553,11 @@ app.get("/api/services", async (req, res) => {
   }
 });
 
-app.post("/api/services", authenticateToken, async (req, res) => {
+app.post(
+  "/api/services",
+  authenticateToken,
+  authorize("service:create"),
+  async (req, res) => {
   const { title, description } = req.body;
 
   // Backend validation
@@ -522,7 +593,11 @@ app.post("/api/services", authenticateToken, async (req, res) => {
   }
 });
 
-app.put("/api/services/:id", authenticateToken, async (req, res) => {
+app.put(
+  "/api/services/:id",
+  authenticateToken,
+  authorize("service:update"),
+  async (req, res) => {
   const { title, description } = req.body;
   const { id } = req.params;
 
@@ -560,7 +635,11 @@ app.put("/api/services/:id", authenticateToken, async (req, res) => {
   }
 });
 
-app.delete("/api/services/:id", authenticateToken, async (req, res) => {
+app.delete(
+  "/api/services/:id",
+  authenticateToken,
+  authorize("service:delete"),
+  async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -587,7 +666,11 @@ app.delete("/api/services/:id", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/api/requests", authenticateToken, async (req, res) => {
+app.post(
+  "/api/requests",
+  authenticateToken,
+  authorize("request:create"),
+  async (req, res) => {
   const { service_id, details } = req.body;
 
   if (!service_id || !details || !details.trim()) {
@@ -634,7 +717,11 @@ app.post("/api/requests", authenticateToken, async (req, res) => {
   }
 });
 
-app.get("/api/requests", authenticateToken, async (req, res) => {
+app.get(
+  "/api/requests",
+  authenticateToken,
+  authorize("request:read"),
+  async (req, res) => {
   const { search, status, service_id } = req.query;
 
   try {
@@ -705,7 +792,11 @@ app.get("/api/requests", authenticateToken, async (req, res) => {
   }
 });
 
-app.get("/api/requests/:id", authenticateToken, async (req, res) => {
+app.get(
+  "/api/requests/:id",
+  authenticateToken,
+  authorize("request:read"),
+  async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -743,7 +834,11 @@ app.get("/api/requests/:id", authenticateToken, async (req, res) => {
   }
 });
 
-app.put("/api/requests/:id/status", authenticateToken, async (req, res) => {
+app.put(
+  "/api/requests/:id/status",
+  authenticateToken,
+  authorize("request:update"),
+  async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
