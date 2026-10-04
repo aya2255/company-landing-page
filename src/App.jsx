@@ -1,5 +1,6 @@
 import './App.css';
-import {useState} from 'react';
+import { useState } from 'react';
+
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import About from './components/About';
@@ -8,62 +9,76 @@ import WhyUs from './components/WhyUs';
 import Sats from './components/Sats';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
+
 import ContentManagement from './components/ContentManagement';
 import Auth from './components/Auth';
 import CustomerDashboard from './components/CustomerDashboard';
 import ServiceManagement from './components/ServiceManagement';
 import CustomerRequest from './components/CustomerRequest';
 import RequestManagement from './components/RequestManagement';
+import FileManagement from './components/FileManagement';
 
 function App() {
   const [user, setUser] = useState(
-  JSON.parse(localStorage.getItem("user")) || null
-);
+    JSON.parse(localStorage.getItem("user")) || null
+  );
 
-const handleLogin = (userData) => {
-  setUser(userData);
-};
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
 
-const handleLogout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  setUser(null);
-};
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
   return (
     <div>
       <Navbar />
+
       <Hero />
+
       <About />
+
       <Services />
+
       <WhyUs />
+
       <Sats />
+
       <Contact />
 
-<Auth onLogin={handleLogin} />
+      <Auth onLogin={handleLogin} />
 
-{user && <CustomerDashboard />}
+      {user && <CustomerDashboard />}
 
-{user && user.role === "customer" && (
-  <CustomerRequest />
-)}
+      {user && user.role === "customer" && (
+        <CustomerRequest />
+      )}
 
-{user && user.role === "admin" && (
-  <>
-    <ServiceManagement />
-    <ContentManagement />
-    <RequestManagement />
-  </>
-)}
+      {user && user.role === "admin" && (
+        <>
+          <ServiceManagement />
+          <ContentManagement />
+          <RequestManagement />
+        </>
+      )}
 
-{user && (
-  <button className="logout-button" onClick={handleLogout}>
-    Logout
-  </button>
-)}
+      {user && <FileManagement />}
 
-<Footer />
-      
+      {user && (
+        <button
+          className="logout-button"
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
+      )}
+
+      <Footer />
     </div>
   );
 }
+
 export default App;

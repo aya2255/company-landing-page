@@ -5,6 +5,9 @@ const cors = require("cors");
 const {createClient} = require("@libsql/client");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -12,6 +15,50 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+const uploadDir = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+
+  filename: (req, file, cb) => {
+    const uniqueName =
+      Date.now() + "-" + file.originalname;
+
+    cb(null, uniqueName);
+  },
+});
+
+const allowedMimeTypes = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "image/jpeg",
+  "image/png",
+];
+
+const upload = multer({
+  storage: storage,
+
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB
+  },
+
+  fileFilter: (req, file, cb) => {
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only PDF, DOC, DOCX, TXT, JPG, and PNG files are allowed."));
+    }
+  },
+});
 
 app.get("/api/user/profile", authenticateToken, async (req, res) => {
   try {
@@ -148,6 +195,18 @@ await db.execute(`
     service_id INTEGER NOT NULL,
     details TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'Pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    original_name TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    mimetype TEXT NOT NULL,
+    size INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
@@ -882,6 +941,184 @@ app.put(
     });
   }
 });
+
+app.post(
+  "/api/files",
+  authenticateToken,
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
+            error: "File is too large. Maximum size is 5 MB.",
+          });
+        }
+
+        return res.status(400).json({
+          error: "File upload failed.",
+        });
+      }
+
+      if (err) {
+        return res.status(400).json({
+          error: err.message,
+        });
+      }
+
+      next();
+    });
+  },
+
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        error: "Please select a file.",
+      });
+    }
+
+    try {
+      const result = await db.execute({
+        sql: `
+          INSERT INTO files
+          (user_id, original_name, filename, mimetype, size)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        args: [
+          req.user.id,
+          req.file.originalname,
+          req.file.filename,
+          req.file.mimetype,
+          req.file.size,
+        ],
+      });
+
+      res.status(201).json({
+        message: "File uploaded successfully!",
+        file: {
+          id: Number(result.lastInsertRowid),
+          original_name: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+
+      if (req.file) {
+        fs.unlink(
+          path.join(uploadDir, req.file.filename),
+          () => {}
+        );
+      }
+
+      res.status(500).json({
+        error: "Failed to save file information.",
+      });
+    }
+  }
+);
+
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        error: "File is too large. Maximum size is 5 MB.",
+      });
+    }
+
+    return res.status(400).json({
+      error: "File upload failed.",
+    });
+  }
+
+  if (error) {
+    return res.status(400).json({
+      error: error.message,
+    });
+  }
+
+  next();
+});
+
+app.get(
+  "/api/files",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const result = await db.execute({
+        sql: `
+          SELECT
+            id,
+            original_name,
+            mimetype,
+            size,
+            created_at
+          FROM files
+          WHERE user_id = ?
+          ORDER BY created_at DESC
+        `,
+        args: [req.user.id],
+      });
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to fetch files.",
+      });
+    }
+  }
+);
+
+app.delete(
+  "/api/files/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const result = await db.execute({
+        sql: `
+          SELECT filename
+          FROM files
+          WHERE id = ? AND user_id = ?
+        `,
+        args: [req.params.id, req.user.id],
+      });
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          error: "File not found.",
+        });
+      }
+
+      const filename = result.rows[0].filename;
+
+      await db.execute({
+        sql: `
+          DELETE FROM files
+          WHERE id = ? AND user_id = ?
+        `,
+        args: [req.params.id, req.user.id],
+      });
+
+      const filePath = path.join(uploadDir, filename);
+
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      res.json({
+        message: "File deleted successfully!",
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to delete file.",
+      });
+    }
+  }
+);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
