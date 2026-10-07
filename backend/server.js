@@ -210,6 +210,36 @@ await db.execute(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS clients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT,
+    company TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Not Started',
+    progress INTEGER NOT NULL DEFAULT 0,
+    client_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS project_members (
+    project_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    PRIMARY KEY (project_id, user_id)
+  )
+`);
 }
 
 createTable();
@@ -241,35 +271,49 @@ function authorize(...requiredPermissions) {
   return (req, res, next) => {
     const role = req.user.role;
 
-    const permissions = {
-      admin: [
-        "content:read",
-        "content:create",
-        "content:update",
-        "content:delete",
+const permissions = {
+  admin: [
+    "content:read",
+    "content:create",
+    "content:update",
+    "content:delete",
 
-        "service:read",
-        "service:create",
-        "service:update",
-        "service:delete",
+    "service:read",
+    "service:create",
+    "service:update",
+    "service:delete",
 
-        "request:read",
-        "request:create",
-        "request:update",
-      ],
+    "request:read",
+    "request:create",
+    "request:update",
 
-      employee: [
-        "service:read",
+    "client:read",
+    "client:create",
+    "client:update",
+    "client:delete",
 
-        "request:read",
-        "request:update",
-      ],
+    "project:read",
+    "project:create",
+    "project:update",
+    "project:delete",
+    "project:assign",
+  ],
 
-      customer: [
-        "service:read",
-        "request:create",
-      ],
-    };
+  employee: [
+    "service:read",
+
+    "request:read",
+    "request:update",
+
+    "project:read",
+    "project:update",
+  ],
+
+  customer: [
+    "service:read",
+    "request:create",
+  ],
+};
 
     const userPermissions = permissions[role] || [];
 
@@ -1115,6 +1159,709 @@ app.delete(
 
       res.status(500).json({
         error: "Failed to delete file.",
+      });
+    }
+  }
+);
+
+// =========================
+// CLIENT MANAGEMENT
+// =========================
+
+// Get all clients
+app.get(
+  "/api/clients",
+  authenticateToken,
+  authorize("client:read"),
+  async (req, res) => {
+    try {
+      const result = await db.execute(`
+        SELECT *
+        FROM clients
+        ORDER BY id DESC
+      `);
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to fetch clients.",
+      });
+    }
+  }
+);
+
+
+// Create client
+app.post(
+  "/api/clients",
+  authenticateToken,
+  authorize("client:create"),
+  async (req, res) => {
+    const { name, email, company } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        error: "Client name is required.",
+      });
+    }
+
+    try {
+      const result = await db.execute({
+        sql: `
+          INSERT INTO clients (name, email, company)
+          VALUES (?, ?, ?)
+        `,
+        args: [
+          name.trim(),
+          email || null,
+          company || null,
+        ],
+      });
+
+      res.status(201).json({
+        message: "Client created successfully!",
+        id: Number(result.lastInsertRowid),
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to create client.",
+      });
+    }
+  }
+);
+
+
+// Update client
+app.put(
+  "/api/clients/:id",
+  authenticateToken,
+  authorize("client:update"),
+  async (req, res) => {
+    const { name, email, company } = req.body;
+    const { id } = req.params;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        error: "Client name is required.",
+      });
+    }
+
+    try {
+      const result = await db.execute({
+        sql: `
+          UPDATE clients
+          SET name = ?, email = ?, company = ?
+          WHERE id = ?
+        `,
+        args: [
+          name.trim(),
+          email || null,
+          company || null,
+          id,
+        ],
+      });
+
+      if (result.rowsAffected === 0) {
+        return res.status(404).json({
+          error: "Client not found.",
+        });
+      }
+
+      res.json({
+        message: "Client updated successfully!",
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to update client.",
+      });
+    }
+  }
+);
+
+
+// Delete client
+app.delete(
+  "/api/clients/:id",
+  authenticateToken,
+  authorize("client:delete"),
+  async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      // Check if client has projects
+      const projects = await db.execute({
+        sql: `
+          SELECT id
+          FROM projects
+          WHERE client_id = ?
+        `,
+        args: [id],
+      });
+
+      if (projects.rows.length > 0) {
+        return res.status(400).json({
+          error: "Cannot delete a client that has projects.",
+        });
+      }
+
+      const result = await db.execute({
+        sql: `
+          DELETE FROM clients
+          WHERE id = ?
+        `,
+        args: [id],
+      });
+
+      if (result.rowsAffected === 0) {
+        return res.status(404).json({
+          error: "Client not found.",
+        });
+      }
+
+      res.json({
+        message: "Client deleted successfully!",
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to delete client.",
+      });
+    }
+  }
+);
+
+
+// =========================
+// PROJECT MANAGEMENT
+// =========================
+
+// Get projects
+app.get(
+  "/api/projects",
+  authenticateToken,
+  authorize("project:read"),
+  async (req, res) => {
+    try {
+      let result;
+
+      if (req.user.role === "admin") {
+        // Admin can see all projects
+        result = await db.execute(`
+          SELECT
+            p.id,
+            p.name,
+            p.description,
+            p.status,
+            p.progress,
+            p.client_id,
+            c.name AS client_name,
+            c.company AS client_company,
+            p.created_at
+          FROM projects p
+          JOIN clients c ON p.client_id = c.id
+          ORDER BY p.id DESC
+        `);
+      } else {
+        // Employee can only see projects assigned to them
+        result = await db.execute({
+          sql: `
+            SELECT
+              p.id,
+              p.name,
+              p.description,
+              p.status,
+              p.progress,
+              p.client_id,
+              c.name AS client_name,
+              c.company AS client_company,
+              p.created_at
+            FROM projects p
+            JOIN clients c ON p.client_id = c.id
+            JOIN project_members pm
+              ON p.id = pm.project_id
+            WHERE pm.user_id = ?
+            ORDER BY p.id DESC
+          `,
+          args: [req.user.id],
+        });
+      }
+
+      // Get assigned members for every project
+      const projects = [];
+
+      for (const project of result.rows) {
+        const members = await db.execute({
+          sql: `
+            SELECT
+              u.id,
+              u.name,
+              u.email
+            FROM users u
+            JOIN project_members pm
+              ON u.id = pm.user_id
+            WHERE pm.project_id = ?
+          `,
+          args: [project.id],
+        });
+
+        projects.push({
+          ...project,
+          members: members.rows,
+        });
+      }
+
+      res.json(projects);
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to fetch projects.",
+      });
+    }
+  }
+);
+
+// Create project
+app.post(
+  "/api/projects",
+  authenticateToken,
+  authorize("project:create"),
+  async (req, res) => {
+    const {
+      name,
+      description,
+      status,
+      progress,
+      client_id,
+      member_ids,
+    } = req.body;
+
+    const allowedStatuses = [
+      "Not Started",
+      "In Progress",
+      "Completed",
+      "On Hold",
+    ];
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        error: "Project name is required.",
+      });
+    }
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({
+        error: "Project description is required.",
+      });
+    }
+
+    if (!client_id) {
+      return res.status(400).json({
+        error: "Client is required.",
+      });
+    }
+
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        error: "Invalid project status.",
+      });
+    }
+
+    const projectProgress =
+      progress === undefined ? 0 : Number(progress);
+
+    if (
+      !Number.isInteger(projectProgress) ||
+      projectProgress < 0 ||
+      projectProgress > 100
+    ) {
+      return res.status(400).json({
+        error: "Progress must be an integer between 0 and 100.",
+      });
+    }
+
+    try {
+      // Check client exists
+      const client = await db.execute({
+        sql: `
+          SELECT id
+          FROM clients
+          WHERE id = ?
+        `,
+        args: [client_id],
+      });
+
+      if (client.rows.length === 0) {
+        return res.status(404).json({
+          error: "Client not found.",
+        });
+      }
+
+      // Create project
+      const result = await db.execute({
+        sql: `
+          INSERT INTO projects
+          (name, description, status, progress, client_id)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        args: [
+          name.trim(),
+          description.trim(),
+          status || "Not Started",
+          projectProgress,
+          client_id,
+        ],
+      });
+
+      const projectId = Number(result.lastInsertRowid);
+
+      // Assign team members
+      if (Array.isArray(member_ids)) {
+        for (const userId of member_ids) {
+          const employee = await db.execute({
+            sql: `
+              SELECT id
+              FROM users
+              WHERE id = ?
+              AND role = 'employee'
+            `,
+            args: [userId],
+          });
+
+          if (employee.rows.length > 0) {
+            await db.execute({
+              sql: `
+                INSERT OR IGNORE INTO project_members
+                (project_id, user_id)
+                VALUES (?, ?)
+              `,
+              args: [projectId, userId],
+            });
+          }
+        }
+      }
+
+      res.status(201).json({
+        message: "Project created successfully!",
+        project_id: projectId,
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to create project.",
+      });
+    }
+  }
+);
+
+// Update project
+app.put(
+  "/api/projects/:id",
+  authenticateToken,
+  authorize("project:update"),
+  async (req, res) => {
+    const { id } = req.params;
+    const {
+      name,
+      description,
+      status,
+      progress,
+      client_id,
+      member_ids,
+    } = req.body;
+
+    const allowedStatuses = [
+      "Not Started",
+      "In Progress",
+      "Completed",
+      "On Hold",
+    ];
+
+    try {
+      // Check if project exists
+      const projectResult = await db.execute({
+        sql: `
+          SELECT *
+          FROM projects
+          WHERE id = ?
+        `,
+        args: [id],
+      });
+
+      if (projectResult.rows.length === 0) {
+        return res.status(404).json({
+          error: "Project not found.",
+        });
+      }
+
+      const project = projectResult.rows[0];
+
+      // =========================
+      // EMPLOYEE
+      // =========================
+      if (req.user.role === "employee") {
+        // Check that employee is assigned to this project
+        const memberResult = await db.execute({
+          sql: `
+            SELECT *
+            FROM project_members
+            WHERE project_id = ?
+            AND user_id = ?
+          `,
+          args: [id, req.user.id],
+        });
+
+        if (memberResult.rows.length === 0) {
+          return res.status(403).json({
+            error: "You are not assigned to this project.",
+          });
+        }
+
+        // Employee can only update status and progress
+        if (!allowedStatuses.includes(status)) {
+          return res.status(400).json({
+            error: "Invalid project status.",
+          });
+        }
+
+        const projectProgress = Number(progress);
+
+        if (
+          !Number.isInteger(projectProgress) ||
+          projectProgress < 0 ||
+          projectProgress > 100
+        ) {
+          return res.status(400).json({
+            error: "Progress must be an integer between 0 and 100.",
+          });
+        }
+
+        await db.execute({
+          sql: `
+            UPDATE projects
+            SET status = ?, progress = ?
+            WHERE id = ?
+          `,
+          args: [status, projectProgress, id],
+        });
+
+        return res.json({
+          message: "Project status and progress updated successfully!",
+        });
+      }
+
+      // =========================
+      // ADMIN
+      // =========================
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          error: "Project name is required.",
+        });
+      }
+
+      if (!description || !description.trim()) {
+        return res.status(400).json({
+          error: "Project description is required.",
+        });
+      }
+
+      if (!client_id) {
+        return res.status(400).json({
+          error: "Client is required.",
+        });
+      }
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          error: "Invalid project status.",
+        });
+      }
+
+      const projectProgress = Number(progress);
+
+      if (
+        !Number.isInteger(projectProgress) ||
+        projectProgress < 0 ||
+        projectProgress > 100
+      ) {
+        return res.status(400).json({
+          error: "Progress must be an integer between 0 and 100.",
+        });
+      }
+
+      // Check client
+      const clientResult = await db.execute({
+        sql: `
+          SELECT id
+          FROM clients
+          WHERE id = ?
+        `,
+        args: [client_id],
+      });
+
+      if (clientResult.rows.length === 0) {
+        return res.status(404).json({
+          error: "Client not found.",
+        });
+      }
+
+      // Update project
+      await db.execute({
+        sql: `
+          UPDATE projects
+          SET
+            name = ?,
+            description = ?,
+            status = ?,
+            progress = ?,
+            client_id = ?
+          WHERE id = ?
+        `,
+        args: [
+          name.trim(),
+          description.trim(),
+          status,
+          projectProgress,
+          client_id,
+          id,
+        ],
+      });
+
+      // Update assigned members
+      if (Array.isArray(member_ids)) {
+        await db.execute({
+          sql: `
+            DELETE FROM project_members
+            WHERE project_id = ?
+          `,
+          args: [id],
+        });
+
+        for (const userId of member_ids) {
+          const employee = await db.execute({
+            sql: `
+              SELECT id
+              FROM users
+              WHERE id = ?
+              AND role = 'employee'
+            `,
+            args: [userId],
+          });
+
+          if (employee.rows.length > 0) {
+            await db.execute({
+              sql: `
+                INSERT OR IGNORE INTO project_members
+                (project_id, user_id)
+                VALUES (?, ?)
+              `,
+              args: [id, userId],
+            });
+          }
+        }
+      }
+
+      res.json({
+        message: "Project updated successfully!",
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to update project.",
+      });
+    }
+  }
+);
+
+// Delete project
+app.delete(
+  "/api/projects/:id",
+  authenticateToken,
+  authorize("project:delete"),
+  async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      // Check if project exists
+      const projectResult = await db.execute({
+        sql: `
+          SELECT id
+          FROM projects
+          WHERE id = ?
+        `,
+        args: [id],
+      });
+
+      if (projectResult.rows.length === 0) {
+        return res.status(404).json({
+          error: "Project not found.",
+        });
+      }
+
+      // Remove project members first
+      await db.execute({
+        sql: `
+          DELETE FROM project_members
+          WHERE project_id = ?
+        `,
+        args: [id],
+      });
+
+      // Delete project
+      await db.execute({
+        sql: `
+          DELETE FROM projects
+          WHERE id = ?
+        `,
+        args: [id],
+      });
+
+      res.json({
+        message: "Project deleted successfully!",
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to delete project.",
+      });
+    }
+  }
+);
+
+// =========================
+// TEAM MEMBERS
+// =========================
+
+app.get(
+  "/api/users/team-members",
+  authenticateToken,
+  authorize("project:assign"),
+  async (req, res) => {
+    try {
+      const result = await db.execute(`
+        SELECT id, name, email
+        FROM users
+        WHERE role = 'employee'
+        ORDER BY name ASC
+      `);
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: "Failed to fetch team members.",
       });
     }
   }

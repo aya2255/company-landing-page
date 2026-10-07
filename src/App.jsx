@@ -17,6 +17,7 @@ import ServiceManagement from './components/ServiceManagement';
 import CustomerRequest from './components/CustomerRequest';
 import RequestManagement from './components/RequestManagement';
 import FileManagement from './components/FileManagement';
+import ProjectManagement from './components/ProjectManagement';
 
 function App() {
   const [user, setUser] = useState(
@@ -66,6 +67,8 @@ function App() {
       )}
 
       {user && <FileManagement />}
+
+      {user && <ProjectManagement />}
 
       {user && (
         <button
